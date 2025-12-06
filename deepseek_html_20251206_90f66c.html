@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>谷物社烘焙坊 - 手势烘焙游戏</title>
+    <link rel="stylesheet" href="style.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link href="https://fonts.googleapis.com/css2?family=Dancing+Script:wght@700&family=Quicksand:wght@400;600&display=swap" rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/camera_utils/camera_utils.js" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/control_utils/control_utils.js" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/drawing_utils/drawing_utils.js" crossorigin="anonymous"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/hands/hands.js" crossorigin="anonymous"></script>
+</head>
+<body>
+    <!-- 开始界面 -->
+    <div id="start-screen" class="screen">
+        <div class="logo-container">
+            <h1 class="logo">谷物社烘焙坊</h1>
+            <div class="logo-subtitle">手势控制烘焙体验</div>
+        </div>
+        
+        <div class="start-content">
+            <div class="instruction-card">
+                <h2><i class="fas fa-graduation-cap"></i> 游戏说明</h2>
+                <ul>
+                    <li>使用你的手和摄像头来控制游戏</li>
+                    <li>首先倒牛奶，然后揉面团</li>
+                    <li>根据你的操作，会生成不同类型的面包</li>
+                    <li>确保摄像头可以清晰看到你的手</li>
+                </ul>
+            </div>
+            
+            <div class="bread-preview">
+                <div class="bread-icon"><i class="fas fa-bread-slice"></i></div>
+                <div class="bread-icon"><i class="fas fa-cookie-bite"></i></div>
+                <div class="bread-icon"><i class="fas fa-birthday-cake"></i></div>
+                <div class="bread-icon"><i class="fas fa-pie"></i></div>
+            </div>
+            
+            <button id="start-btn" class="btn-primary">
+                <i class="fas fa-play-circle"></i> 开始游戏
+            </button>
+            
+            <div class="camera-prompt">
+                <i class="fas fa-video"></i> 请允许访问摄像头
+            </div>
+        </div>
+        
+        <div class="music-control">
+            <button id="music-toggle" class="btn-music">
+                <i class="fas fa-volume-up"></i> 背景音乐
+            </button>
+        </div>
+    </div>
+    
+    <!-- 游戏界面 -->
+    <div id="game-screen" class="screen hidden">
+        <div class="game-header">
+            <div class="game-title">谷物社烘焙坊</div>
+            <div class="game-controls">
+                <button id="pause-btn" class="btn-control">
+                    <i class="fas fa-pause"></i>
+                </button>
+                <button id="home-btn" class="btn-control">
+                    <i class="fas fa-home"></i>
+                </button>
+            </div>
+        </div>
+        
+        <div class="game-container">
+            <div class="game-stage">
+                <div class="stage-info">
+                    <h2 id="stage-title">阶段 1: 倒牛奶</h2>
+                    <div class="progress-container">
+                        <div class="progress-bar" id="stage-progress"></div>
+                    </div>
+                    <p id="stage-instruction">将你的手移动到牛奶瓶上方，然后向下倾斜倒出牛奶</p>
+                </div>
+                
+                <div class="game-area">
+                    <div class="camera-container">
+                        <video id="input-video" class="video" autoplay></video>
+                        <canvas id="output-canvas" class="output-canvas"></canvas>
+                        <div class="hand-indicator">
+                            <i class="fas fa-hand-point-up"></i> 手部追踪已启用
+                        </div>
+                    </div>
+                    
+                    <div class="game-objects">
+                        <!-- 牛奶瓶 -->
+                        <div id="milk-bottle" class="game-object">
+                            <div class="milk-bottle-top"></div>
+                            <div class="milk-bottle-body">
+                                <div class="milk-level" id="milk-level"></div>
+                            </div>
+                            <div class="milk-bottle-label">鲜牛奶</div>
+                        </div>
+                        
+                        <!-- 碗 -->
+                        <div id="bowl" class="game-object">
+                            <div class="bowl-top"></div>
+                            <div class="bowl-body">
+                                <div class="dough-mix" id="dough-mix"></div>
+                            </div>
+                        </div>
+                        
+                        <!-- 手势指示器 -->
+                        <div id="hand-cursor" class="hand-cursor">
+                            <i class="fas fa-hand-point-up"></i>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="stage-tips">
+                    <i class="fas fa-lightbulb"></i> 
+                    <span id="tip-text">伸出手指并向下移动来倒牛奶</span>
+                </div>
+            </div>
+            
+            <div class="game-sidebar">
+                <div class="recipe-card">
+                    <h3><i class="fas fa-clipboard-list"></i> 烘焙配方</h3>
+                    <ul class="recipe-steps">
+                        <li class="step active"><i class="fas fa-wine-bottle"></i> 倒入牛奶</li>
+                        <li class="step"><i class="fas fa-hand-rock"></i> 揉捏面团</li>
+                        <li class="step"><i class="fas fa-fire"></i> 烘焙面包</li>
+                        <li class="step"><i class="fas fa-bread-slice"></i> 享用成果</li>
+                    </ul>
+                </div>
+                
+                <div class="timer-card">
+                    <h3><i class="fas fa-clock"></i> 游戏时间</h3>
+                    <div class="timer-display" id="timer">00:00</div>
+                </div>
+                
+                <div class="bread-types">
+                    <h3><i class="fas fa-utensils"></i> 可能的面包</h3>
+                    <div class="bread-list">
+                        <div class="bread-item" data-bread="baguette">
+                            <div class="bread-icon-small"><i class="fas fa-baguette"></i></div>
+                            <span>法式长棍</span>
+                        </div>
+                        <div class="bread-item" data-bread="croissant">
+                            <div class="bread-icon-small"><i class="fas fa-croissant"></i></div>
+                            <span>羊角面包</span>
+                        </div>
+                        <div class="bread-item" data-bread="brioche">
+                            <div class="bread-icon-small"><i class="fas fa-bread-slice"></i></div>
+                            <span>奶油面包</span>
+                        </div>
+                        <div class="bread-item" data-bread="sourdough">
+                            <div class="bread-icon-small"><i class="fas fa-wheat-alt"></i></div>
+                            <span>酸面包</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- 结束界面 -->
+    <div id="end-screen" class="screen hidden">
+        <div class="result-container">
+            <h1 class="result-title">烘焙完成!</h1>
+            
+            <div class="bread-result">
+                <div class="bread-image" id="final-bread">
+                    <i class="fas fa-bread-slice"></i>
+                </div>
+                <h2 id="bread-name">奶油面包</h2>
+                <p id="bread-description">金黄酥脆的外皮，柔软的内层，带有浓郁的奶香。</p>
+            </div>
+            
+            <div class="score-card">
+                <h3><i class="fas fa-chart-line"></i> 烘焙评分</h3>
+                <div class="score-row">
+                    <span>倒牛奶技巧</span>
+                    <div class="score-bar">
+                        <div class="score-fill" id="score-milk"></div>
+                    </div>
+                    <span id="score-milk-value">85%</span>
+                </div>
+                <div class="score-row">
+                    <span>揉面力度</span>
+                    <div class="score-bar">
+                        <div class="score-fill" id="score-knead"></div>
+                    </div>
+                    <span id="score-knead-value">90%</span>
+                </div>
+                <div class="score-row">
+                    <span>总体时间</span>
+                    <div class="score-bar">
+                        <div class="score-fill" id="score-time"></div>
+                    </div>
+                    <span id="score-time-value">95%</span>
+                </div>
+                <div class="total-score">
+                    <span>总分</span>
+                    <span id="total-score-value">90</span>/100
+                </div>
+            </div>
+            
+            <div class="result-buttons">
+                <button id="restart-btn" class="btn-primary">
+                    <i class="fas fa-redo"></i> 再次烘焙
+                </button>
+                <button id="share-btn" class="btn-secondary">
+                    <i class="fas fa-share-alt"></i> 分享成果
+                </button>
+            </div>
+            
+            <div class="bread-collection">
+                <h3><i class="fas fa-trophy"></i> 面包收藏</h3>
+                <div class="collection-list" id="collection-list">
+                    <!-- 已解锁的面包会显示在这里 -->
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- 音频元素 -->
+    <audio id="background-music" loop>
+        <source src="https://assets.mixkit.co/music/preview/mixkit-kitchen-utensils-1251.mp3" type="audio/mpeg">
+    </audio>
+    <audio id="pour-sound">
+        <source src="https://assets.mixkit.co/sfx/preview/mixkit-pouring-water-into-a-glass-433.mp3" type="audio/mpeg">
+    </audio>
+    <audio id="knead-sound">
+        <source src="https://assets.mixkit.co/sfx/preview/mixkit-squishy-dough-901.mp3" type="audio/mpeg">
+    </audio>
+    <audio id="success-sound">
+        <source src="https://assets.mixkit.co/sfx/preview/mixkit-winning-chimes-2015.mp3" type="audio/mpeg">
+    </audio>
+    
+    <script src="game.js"></script>
+    <script src="handTracking.js"></script>
+</body>
+</html>
